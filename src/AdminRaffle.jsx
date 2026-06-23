@@ -368,7 +368,7 @@ export default function AdminRaffle() {
           <div className="wheel-wrap">
             <div className="wheel" ref={wheelRef}>
               {participants.length === 0 ? (
-                <span className="wheel-empty">🦄</span>
+                <span className="wheel-empty">🧸</span>
               ) : (
                 <svg
                   className="wheel-svg"

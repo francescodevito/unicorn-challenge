@@ -1,4 +1,4 @@
-# Contesto progetto — Unicorn Challenge
+# Contesto progetto — Acchiappapeluche
 
 ## Associazione Gianmarco De Maria — Corsa Solidale IN PIGIAMA
 
@@ -18,11 +18,11 @@ Data: **3 luglio 2026**
 
 Durante l’evento si vuole proporre ai partecipanti una challenge interattiva via smartphone:
 
-**Unicorn Challenge**
+**Acchiappapeluche**
 
-L’idea è che i partecipanti cerchino 5 pupazzi unicorno nascosti o posizionati nell’area dell’evento. Ogni unicorno ha un QR code plastificato. L’utente inquadra il QR con la web app e registra l’unicorno trovato.
+L’idea è che i partecipanti cerchino 5 peluche nascosti o posizionati nell’area dell’evento. Ogni peluche ha un QR code plastificato. L’utente inquadra il QR con la web app e registra il peluche trovato.
 
-Quando l’utente trova tutti e 5 gli unicorni, il suo nickname viene salvato in Firebase e viene inserito nella ruota dell’estrazione premi.
+Quando l’utente trova tutti e 5 i peluche, il suo nickname viene salvato in Firebase e viene inserito nella ruota dell’estrazione premi.
 
 ---
 
@@ -113,7 +113,7 @@ Invece il QR:
 5. È adatto a 500 utenti.
 6. Riduce il rischio tecnico durante l’evento.
 
-Payload QR dei 5 unicorni:
+Payload QR dei 5 peluche (il prefisso resta `UNICORN:` per compatibilità con i QR già stampati):
 
 ```text
 UNICORN:stella
@@ -148,9 +148,9 @@ Percorso:
 3. Inserisce un nickname.
 4. L’app fa login anonimo su Firebase.
 5. Si apre la fotocamera.
-6. L’utente cerca 5 unicorni.
-7. Ogni unicorno viene riconosciuto tramite QR code.
-8. Nel footer appaiono i 5 unicorni con spunta per quelli trovati.
+6. L’utente cerca 5 peluche.
+7. Ogni peluche viene riconosciuto tramite QR code.
+8. Nel footer appaiono i 5 peluche con spunta per quelli trovati.
 9. Quando li trova tutti, l’app salva il completamento su Firestore.
 10. Se chiude involontariamente la pagina, lo stato resta salvato in `localStorage`.
 
@@ -286,7 +286,7 @@ se il repository si chiama `corsa-pigiama`.
       rel="stylesheet"
     />
 
-    <title>Corsa Solidale IN PIGIAMA - Unicorn Challenge</title>
+    <title>Corsa Solidale IN PIGIAMA - Acchiappapeluche</title>
   </head>
 
   <body>

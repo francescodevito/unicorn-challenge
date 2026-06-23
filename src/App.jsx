@@ -274,7 +274,7 @@ export default function App() {
       setCode(playerCode);
       setNickname(cleanNickname);
       setStarted(true);
-      setStatus("Trova i 5 unicorni nascosti al Campo Scuola!");
+      setStatus("Trova i 5 peluche nascosti al Campo Scuola!");
     } catch (error) {
       if (error.message === "NICKNAME_TAKEN") {
         setStatus("Questo nickname è già in uso. Scegline un altro.");
@@ -305,7 +305,7 @@ export default function App() {
           const unicornId = parseUnicornQr(decodedText);
 
           if (!unicornId) {
-            setStatus("QR non valido. Cerca un QR unicorno.");
+            setStatus("QR non valido. Cerca un QR sui peluche.");
             return;
           }
 
@@ -315,7 +315,7 @@ export default function App() {
       );
 
       setCameraActive(true);
-      setStatus("Inquadra il QR su un pupazzo unicorno.");
+      setStatus("Inquadra il QR su un peluche.");
     } catch (error) {
       console.error(error);
       setStatus(
@@ -348,7 +348,7 @@ export default function App() {
 
     if (current[unicornId]) {
       const item = UNICORNS.find((u) => u.id === unicornId);
-      setStatus(`${item?.emoji || "🦄"} ${item?.label || "Unicorno"} già trovato!`);
+      setStatus(`${item?.emoji || "🧸"} ${item?.label || "Peluche"} già trovato!`);
       return;
     }
 
@@ -381,7 +381,7 @@ export default function App() {
       } catch (error) {
         console.error(error);
         setStatus(
-          "Unicorno salvato sul telefono. La sincronizzazione online riproverà al completamento."
+          "Peluche salvato sul telefono. La sincronizzazione online riproverà al completamento."
         );
       }
     }
@@ -456,7 +456,7 @@ export default function App() {
         <img src={ASSOCIATION.logo} alt="Logo Associazione Gianmarco De Maria" />
         <p className="eyebrow">{ASSOCIATION.name}</p>
         <h1>{ASSOCIATION.title}</h1>
-        <h2>Unicorn Challenge</h2>
+        <h2>Acchiappapeluche</h2>
 
         <nav className="social-links" aria-label="Social Associazione Gianmarco De Maria">
           <a
@@ -508,10 +508,10 @@ export default function App() {
 
       {!started && (
         <main className="card start-card">
-          <div className="big-unicorn">🦄</div>
-          <h3>Pronto a cercare gli unicorni?</h3>
+          <div className="big-unicorn">🧸</div>
+          <h3>Pronto a cercare i peluche?</h3>
           <p>
-            Inserisci un nickname. Quando trovi tutti e 5 gli unicorni, entri
+            Inserisci un nickname. Quando trovi tutti e 5 i peluche, entri
             automaticamente nell’estrazione dei premi.
           </p>
 
@@ -548,7 +548,7 @@ export default function App() {
               <p className="status">{status}</p>
 
               <div className="progress-text">
-                {foundCount} / {UNICORNS.length} unicorni trovati
+                {foundCount} / {UNICORNS.length} peluche trovati
               </div>
             </>
           )}
@@ -566,7 +566,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <div className="big-unicorn">🏆🦄</div>
+                  <div className="big-unicorn">🏆🧸</div>
                   <h3>Challenge completata!</h3>
                   <p>
                     Grande! Il nickname <strong>{nickname}</strong> è stato
