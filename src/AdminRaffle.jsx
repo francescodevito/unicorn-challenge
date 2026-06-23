@@ -52,6 +52,7 @@ export default function AdminRaffle() {
   const [completions, setCompletions] = useState([]);
   const [manuals, setManuals] = useState([]);
   const [manualNickname, setManualNickname] = useState("");
+  const [showManual, setShowManual] = useState(false);
   const [prizeCount, setPrizeCount] = useState(3);
   const [winners, setWinners] = useState([]);
   const [spinning, setSpinning] = useState(false);
@@ -139,6 +140,73 @@ export default function AdminRaffle() {
 
     return Array.from(map.values());
   }, [completions, manuals]);
+
+  // Spicchi della ruota in SVG: uno per partecipante, con testo orientato
+  // lungo il raggio e bordi evidenti.
+  const WHEEL_PALETTE = [
+    "#ffd1e6",
+    "#ffe066",
+    "#c4f0ff",
+    "#e3d7ff",
+    "#ffc9de",
+    "#d6f5d6",
+    "#ffe0c4"
+  ];
+  const WHEEL_CAP = 36;
+
+  const wheelSlices = useMemo(() => {
+    const list = participants.slice(0, WHEEL_CAP);
+    const n = list.length;
+    if (n === 0) return [];
+
+    const step = 360 / n;
+    const cx = 50;
+    const cy = 50;
+    const R = 47; // raggio degli spicchi
+    const rLabelInner = 14.5; // dove inizia il testo, vicino al mozzo
+
+    // angolo in gradi misurato in senso orario dall'alto (ore 12)
+    const toXY = (r, deg) => {
+      const a = ((deg - 90) * Math.PI) / 180;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    };
+
+    return list.map((p, i) => {
+      const start = i * step;
+      const end = (i + 1) * step;
+      const mid = start + step / 2;
+
+      const [x0, y0] = toXY(R, start);
+      const [x1, y1] = toXY(R, end);
+      const largeArc = step > 180 ? 1 : 0;
+      const path = `M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${R} ${R} 0 ${largeArc} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
+
+      // Sulla metà sinistra il testo radiale risulterebbe capovolto:
+      // lo ribaltiamo così resta leggibile dall'esterno.
+      const flip = mid > 180 && mid < 360;
+      const rot = flip ? mid + 90 : mid - 90;
+      const anchor = flip ? "end" : "start";
+      const tx = flip ? -rLabelInner : rLabelInner;
+
+      const raw = p.nickname || "";
+      const label = raw.length > 15 ? `${raw.slice(0, 14)}…` : raw;
+
+      return {
+        id: p.id,
+        fill: WHEEL_PALETTE[i % WHEEL_PALETTE.length],
+        path,
+        rot,
+        anchor,
+        tx,
+        label
+      };
+    });
+  }, [participants]);
+
+  const wheelLabelSize = Math.max(
+    1.9,
+    Math.min(3.3, 24 / Math.max(1, wheelSlices.length))
+  );
 
   async function login(e) {
     e.preventDefault();
@@ -301,21 +369,37 @@ export default function AdminRaffle() {
             {participants.length === 0 ? (
               <span className="wheel-empty">🦄</span>
             ) : (
-              participants.slice(0, 24).map((p, index) => {
-                const angle = (360 / Math.min(participants.length, 24)) * index;
-
-                return (
-                  <span
-                    key={p.id}
-                    className="wheel-name"
-                    style={{
-                      transform: `rotate(${angle}deg) translate(0, -135px) rotate(${-angle}deg)`
-                    }}
+              <svg
+                className="wheel-svg"
+                viewBox="0 0 100 100"
+                role="img"
+                aria-label="Ruota dei partecipanti"
+              >
+                {wheelSlices.map((s) => (
+                  <path key={s.id} className="wheel-slice" d={s.path} fill={s.fill} />
+                ))}
+                <circle
+                  className="wheel-rim"
+                  cx="50"
+                  cy="50"
+                  r="47"
+                  fill="none"
+                />
+                {wheelSlices.map((s) => (
+                  <text
+                    key={`t-${s.id}`}
+                    className="wheel-slice-label"
+                    transform={`translate(50 50) rotate(${s.rot})`}
+                    x={s.tx}
+                    y="0"
+                    textAnchor={s.anchor}
+                    dominantBaseline="central"
+                    fontSize={wheelLabelSize}
                   >
-                    {p.nickname}
-                  </span>
-                );
-              })
+                    {s.label}
+                  </text>
+                ))}
+              </svg>
             )}
           </div>
 
@@ -347,17 +431,28 @@ export default function AdminRaffle() {
         <section className="card admin-panel">
           <h3>Partecipanti completati: {participants.length}</h3>
 
-          <div className="manual-add">
-            <input
-              className="nickname-input"
-              value={manualNickname}
-              onChange={(e) => setManualNickname(e.target.value)}
-              placeholder="Nickname manuale"
-            />
-            <button className="ghost-btn" onClick={addManualNickname}>
-              Aggiungi
-            </button>
-          </div>
+          <button
+            type="button"
+            className="manual-toggle"
+            onClick={() => setShowManual((v) => !v)}
+            aria-expanded={showManual}
+          >
+            {showManual ? "Nascondi inserimento manuale ▲" : "Aggiungi a mano ▼"}
+          </button>
+
+          {showManual && (
+            <div className="manual-add">
+              <input
+                className="nickname-input"
+                value={manualNickname}
+                onChange={(e) => setManualNickname(e.target.value)}
+                placeholder="Nickname manuale"
+              />
+              <button className="ghost-btn" onClick={addManualNickname}>
+                Aggiungi
+              </button>
+            </div>
+          )}
 
           <div className="participant-list">
             {participants.map((p) => (
