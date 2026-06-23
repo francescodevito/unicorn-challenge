@@ -17,7 +17,11 @@ const ASSOCIATION = {
   name: "Associazione Gianmarco De Maria",
   title: "Corsa Solidale IN PIGIAMA",
   color: "rgb(210, 40, 121)",
-  logo: "https://www.gianmarcodemaria.it/wp-content/uploads/2023/12/LogoSoloFiorePNG2.png"
+  logo: "https://www.gianmarcodemaria.it/wp-content/uploads/2023/12/LogoSoloFiorePNG2.png",
+  social: {
+    instagram: "https://www.instagram.com/associazionegianmarcodemaria/",
+    facebook: "https://www.facebook.com/groups/41555539043/"
+  }
 };
 
 const UNICORNS = [
@@ -49,6 +53,34 @@ function normalizeNickname(value) {
     .trim()
     .replace(/\s+/g, " ")
     .slice(0, 24);
+}
+
+const IS_MOBILE =
+  typeof navigator !== "undefined" &&
+  (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent)));
+
+// Su mobile prova ad aprire l'app nativa; se non si apre entro la soglia,
+// ricade sull'URL web. Su desktop lascia navigare il link normalmente.
+function openSocial(event, appUrl, webUrl) {
+  if (!IS_MOBILE) return;
+
+  event.preventDefault();
+
+  let appOpened = false;
+  const onVisibilityChange = () => {
+    if (document.hidden) appOpened = true;
+  };
+
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.location.href = appUrl;
+
+  window.setTimeout(() => {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    if (!appOpened) {
+      window.location.href = webUrl;
+    }
+  }, 1200);
 }
 
 function parseUnicornQr(decodedText) {
@@ -320,6 +352,53 @@ export default function App() {
         <p className="eyebrow">{ASSOCIATION.name}</p>
         <h1>{ASSOCIATION.title}</h1>
         <h2>Unicorn Challenge</h2>
+
+        <nav className="social-links" aria-label="Social Associazione Gianmarco De Maria">
+          <a
+            className="social-link instagram"
+            href={ASSOCIATION.social.instagram}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) =>
+              openSocial(
+                e,
+                "instagram://user?username=associazionegianmarcodemaria",
+                ASSOCIATION.social.instagram
+              )
+            }
+          >
+            <svg
+              className="social-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M12 2.2c3.2 0 3.6 0 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s0 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58 0-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.21 15.58 2.2 15.2 2.2 12s0-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.21 8.8 2.2 12 2.2Zm0 1.62c-3.15 0-3.52.01-4.76.07-.92.04-1.42.2-1.75.33-.44.17-.76.38-1.09.71-.33.33-.54.65-.71 1.09-.13.33-.29.83-.33 1.75-.06 1.24-.07 1.61-.07 4.76s.01 3.52.07 4.76c.04.92.2 1.42.33 1.75.17.44.38.76.71 1.09.33.33.65.54 1.09.71.33.13.83.29 1.75.33 1.24.06 1.61.07 4.76.07s3.52-.01 4.76-.07c.92-.04 1.42-.2 1.75-.33.44-.17.76-.38 1.09-.71.33-.33.54-.65.71-1.09.13-.33.29-.83.33-1.75.06-1.24.07-1.61.07-4.76s-.01-3.52-.07-4.76c-.04-.92-.2-1.42-.33-1.75a2.94 2.94 0 0 0-.71-1.09 2.94 2.94 0 0 0-1.09-.71c-.33-.13-.83-.29-1.75-.33-1.24-.06-1.61-.07-4.76-.07Zm0 2.76a5.42 5.42 0 1 1 0 10.84 5.42 5.42 0 0 1 0-10.84Zm0 1.62a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm5.6-2.9a1.27 1.27 0 1 1 0 2.54 1.27 1.27 0 0 1 0-2.54Z" />
+            </svg>
+            Instagram
+          </a>
+          <a
+            className="social-link facebook"
+            href={ASSOCIATION.social.facebook}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) =>
+              openSocial(e, "fb://group/41555539043", ASSOCIATION.social.facebook)
+            }
+          >
+            <svg
+              className="social-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.9h2.54V9.85c0-2.52 1.49-3.91 3.78-3.91 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.89h2.78l-.44 2.9h-2.34V22c4.78-.76 8.44-4.92 8.44-9.94Z" />
+            </svg>
+            Facebook
+          </a>
+        </nav>
       </header>
 
       {!started && (

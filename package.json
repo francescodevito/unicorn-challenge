@@ -2,7 +2,7 @@
     "name": "unicorn-challenge",
     "version": "1.0.0",
     "private": true,
-    "homepage": "https://TUO-USERNAME.github.io/unicorn-challenge",
+    "homepage": "https://francescodevito.github.io/unicorn-challenge",
     "scripts": {
       "dev": "vite",
       "build": "vite build",
