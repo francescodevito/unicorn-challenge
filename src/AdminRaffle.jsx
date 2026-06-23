@@ -365,42 +365,50 @@ export default function AdminRaffle() {
         <section className="card wheel-card">
           <div className="wheel-pointer">▼</div>
 
-          <div className="wheel" ref={wheelRef}>
-            {participants.length === 0 ? (
-              <span className="wheel-empty">🦄</span>
-            ) : (
-              <svg
-                className="wheel-svg"
-                viewBox="0 0 100 100"
-                role="img"
-                aria-label="Ruota dei partecipanti"
-              >
-                {wheelSlices.map((s) => (
-                  <path key={s.id} className="wheel-slice" d={s.path} fill={s.fill} />
-                ))}
-                <circle
-                  className="wheel-rim"
-                  cx="50"
-                  cy="50"
-                  r="47"
-                  fill="none"
-                />
-                {wheelSlices.map((s) => (
-                  <text
-                    key={`t-${s.id}`}
-                    className="wheel-slice-label"
-                    transform={`translate(50 50) rotate(${s.rot})`}
-                    x={s.tx}
-                    y="0"
-                    textAnchor={s.anchor}
-                    dominantBaseline="central"
-                    fontSize={wheelLabelSize}
-                  >
-                    {s.label}
-                  </text>
-                ))}
-              </svg>
-            )}
+          <div className="wheel-wrap">
+            <div className="wheel" ref={wheelRef}>
+              {participants.length === 0 ? (
+                <span className="wheel-empty">🦄</span>
+              ) : (
+                <svg
+                  className="wheel-svg"
+                  viewBox="0 0 100 100"
+                  role="img"
+                  aria-label="Ruota dei partecipanti"
+                >
+                  {wheelSlices.map((s) => (
+                    <path key={s.id} className="wheel-slice" d={s.path} fill={s.fill} />
+                  ))}
+                  <circle
+                    className="wheel-rim"
+                    cx="50"
+                    cy="50"
+                    r="47"
+                    fill="none"
+                  />
+                  {wheelSlices.map((s) => (
+                    <text
+                      key={`t-${s.id}`}
+                      className="wheel-slice-label"
+                      transform={`translate(50 50) rotate(${s.rot})`}
+                      x={s.tx}
+                      y="0"
+                      textAnchor={s.anchor}
+                      dominantBaseline="central"
+                      fontSize={wheelLabelSize}
+                    >
+                      {s.label}
+                    </text>
+                  ))}
+                </svg>
+              )}
+            </div>
+
+            {/* Mozzo centrale col logo dell'associazione: sta fuori dall'elemento
+                che ruota, così resta fermo mentre la ruota gira. */}
+            <div className="wheel-hub">
+              <img src={ASSOCIATION.logo} alt="Logo Associazione Gianmarco De Maria" />
+            </div>
           </div>
 
           <div className="raffle-controls">

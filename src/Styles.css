@@ -365,17 +365,46 @@
     color: var(--agm-pink);
   }
   
-  .wheel {
+  .wheel-wrap {
     position: relative;
     width: min(460px, 90vw);
     height: min(460px, 90vw);
     margin: 0 auto 20px;
+  }
+
+  .wheel {
+    position: relative;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     overflow: hidden;
     border: 10px solid #fff;
     background: #fff7fb;
     box-shadow: var(--shadow);
     transition: transform 3.6s cubic-bezier(0.16, 0.9, 0.18, 1);
+  }
+
+  .wheel-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 26%;
+    height: 26%;
+    border-radius: 50%;
+    background: #fff;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    z-index: 3;
+    box-shadow: 0 8px 18px rgba(93, 20, 64, 0.18);
+    pointer-events: none;
+  }
+
+  .wheel-hub img {
+    width: 80%;
+    height: 80%;
+    object-fit: contain;
   }
 
   .wheel-svg {
@@ -407,21 +436,6 @@
     pointer-events: none;
   }
 
-  .wheel::after {
-    content: "🦄";
-    position: absolute;
-    inset: 50%;
-    width: 22%;
-    height: 22%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: #fff;
-    font-size: 2.7rem;
-    box-shadow: 0 8px 18px rgba(93, 20, 64, 0.18);
-  }
   
   .wheel-empty {
     position: absolute;
