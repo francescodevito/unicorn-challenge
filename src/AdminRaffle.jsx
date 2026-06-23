@@ -114,9 +114,12 @@ export default function AdminRaffle() {
 
     completions.forEach((item) => {
       if (item.nickname) {
-        map.set(`auto-${item.uid || item.id}`, {
-          id: `auto-${item.uid || item.id}`,
+        const uid = item.uid || item.id;
+        map.set(`auto-${uid}`, {
+          id: `auto-${uid}`,
+          uid,
           nickname: item.nickname,
+          code: item.code || null,
           source: "challenge"
         });
       }
@@ -126,7 +129,9 @@ export default function AdminRaffle() {
       if (item.nickname) {
         map.set(`manual-${item.id}`, {
           id: `manual-${item.id}`,
+          uid: null,
           nickname: item.nickname,
+          code: null,
           source: "manuale"
         });
       }
@@ -204,13 +209,31 @@ export default function AdminRaffle() {
         origin: { y: 0.55 }
       });
 
+      const drawId = `draw-${Date.now()}`;
+
       try {
-        await setDoc(doc(db, "draws", `draw-${Date.now()}`), {
+        await setDoc(doc(db, "draws", drawId), {
           winners: selected,
           prizeCount: n,
           totalParticipants: participants.length,
           createdAt: serverTimestamp()
         });
+
+        // Notifica in tempo reale ogni vincitore della challenge nella sua app.
+        // I nickname manuali non hanno uid, quindi vengono saltati.
+        await Promise.all(
+          selected
+            .filter((w) => w.uid)
+            .map((w) =>
+              setDoc(doc(db, "winners", w.uid), {
+                uid: w.uid,
+                nickname: w.nickname,
+                prizeIndex: selected.indexOf(w) + 1,
+                drawId,
+                wonAt: serverTimestamp()
+              })
+            )
+        );
       } catch (error) {
         console.error(error);
         setStatus(
@@ -352,9 +375,18 @@ export default function AdminRaffle() {
                 {winners.map((w, index) => (
                   <li key={w.id}>
                     Premio {index + 1}: <strong>{w.nickname}</strong>
+                    {w.code ? (
+                      <span className="winner-code"> · codice {w.code}</span>
+                    ) : (
+                      <span className="winner-code manual"> · (manuale)</span>
+                    )}
                   </li>
                 ))}
               </ol>
+              <p className="winner-verify-hint">
+                Verifica: il codice qui sopra deve combaciare con quello mostrato
+                nell’app del vincitore.
+              </p>
             </div>
           )}
         </section>

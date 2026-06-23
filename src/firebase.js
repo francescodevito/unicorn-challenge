@@ -15,7 +15,8 @@ import {
   onSnapshot,
   query,
   orderBy,
-  getDoc
+  getDoc,
+  runTransaction
 } from "firebase/firestore";
 
 // Import the functions you need from the SDKs you need
@@ -56,5 +57,6 @@ export {
   onSnapshot,
   query,
   orderBy,
-  getDoc
+  getDoc,
+  runTransaction
 };

@@ -10,7 +10,9 @@ import {
   doc,
   setDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot,
+  runTransaction
 } from "./firebase";
 
 const ASSOCIATION = {
@@ -53,6 +55,29 @@ function normalizeNickname(value) {
     .trim()
     .replace(/\s+/g, " ")
     .slice(0, 24);
+}
+
+// Stessa logica di AdminRaffle.slugify: chiave univoca del nickname.
+// "Marco", "marco " e "MARCO" collidono come dovrebbero.
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\wàèéìòù]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+// Codice premio personale, mostrato solo nell'app dell'utente e usato
+// dallo staff per verificare l'identità del vincitore al ritiro.
+// Alfabeto senza caratteri ambigui (niente I/O/0/1).
+function generateCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 5; i += 1) {
+    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return code;
 }
 
 const IS_MOBILE =
@@ -112,6 +137,8 @@ export default function App() {
   const [cameraActive, setCameraActive] = useState(false);
   const [completed, setCompleted] = useState(Boolean(restored?.completed));
   const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState(restored?.code || "");
+  const [prizeWon, setPrizeWon] = useState(null);
 
   const foundCount = Object.values(found).filter(Boolean).length;
   const allFound = foundCount === UNICORNS.length;
@@ -134,9 +161,28 @@ export default function App() {
       nickname,
       started,
       found,
-      completed
+      completed,
+      code
     });
-  }, [nickname, started, found, completed]);
+  }, [nickname, started, found, completed, code]);
+
+  // Ascolta in tempo reale se questo utente è stato estratto come vincitore.
+  // Solo il proprietario può leggere winners/{uid} (vedi firestore.rules).
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const unsubscribe = onSnapshot(
+      doc(db, "winners", user.uid),
+      (snapshot) => {
+        setPrizeWon(snapshot.exists() ? snapshot.data() : null);
+      },
+      (error) => {
+        console.error(error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
 
   useEffect(() => {
     if (started && user && !cameraActive && !completed) {
@@ -171,12 +217,47 @@ export default function App() {
 
     setBusy(true);
 
+    const slug = slugify(cleanNickname);
+
+    if (!slug) {
+      setStatus("Nickname non valido. Usa lettere o numeri.");
+      setBusy(false);
+      return;
+    }
+
+    // Codice personale: generato una sola volta e poi riusato.
+    const playerCode = code || generateCode();
+
     try {
+      // Prenotazione atomica del nickname. La transazione legge il documento
+      // nicknames/{slug}: se esiste ed è di un altro utente il nickname è
+      // occupato; altrimenti lo riserva a questo uid. Niente race condition.
+      await runTransaction(db, async (tx) => {
+        const slugRef = doc(db, "nicknames", slug);
+        const slugSnap = await tx.get(slugRef);
+
+        if (slugSnap.exists() && slugSnap.data().uid !== user.uid) {
+          throw new Error("NICKNAME_TAKEN");
+        }
+
+        tx.set(
+          slugRef,
+          {
+            uid: user.uid,
+            nickname: cleanNickname,
+            createdAt: serverTimestamp()
+          },
+          { merge: true }
+        );
+      });
+
       await setDoc(
         doc(db, "participants", user.uid),
         {
           uid: user.uid,
           nickname: cleanNickname,
+          slug,
+          code: playerCode,
           found,
           completed: false,
           createdAt: serverTimestamp(),
@@ -185,12 +266,17 @@ export default function App() {
         { merge: true }
       );
 
+      setCode(playerCode);
       setNickname(cleanNickname);
       setStarted(true);
       setStatus("Trova i 5 unicorni nascosti al Campo Scuola!");
     } catch (error) {
-      console.error(error);
-      setStatus("Non riesco a salvare il partecipante. Controlla la rete.");
+      if (error.message === "NICKNAME_TAKEN") {
+        setStatus("Questo nickname è già in uso. Scegline un altro.");
+      } else {
+        console.error(error);
+        setStatus("Non riesco a salvare il partecipante. Controlla la rete.");
+      }
     } finally {
       setBusy(false);
     }
@@ -292,6 +378,10 @@ export default function App() {
   async function completeChallenge() {
     setBusy(true);
 
+    // Garantisce un codice anche se l'utente è ripartito da localStorage.
+    const playerCode = code || generateCode();
+    if (!code) setCode(playerCode);
+
     try {
       await stopScanner();
 
@@ -300,6 +390,7 @@ export default function App() {
         {
           uid: user.uid,
           nickname,
+          code: playerCode,
           found,
           completed: true,
           completedAt: serverTimestamp(),
@@ -311,6 +402,7 @@ export default function App() {
       await setDoc(doc(db, "completions", user.uid), {
         uid: user.uid,
         nickname,
+        code: playerCode,
         completed: true,
         source: "challenge",
         completedAt: serverTimestamp()
@@ -341,6 +433,7 @@ export default function App() {
     setStarted(false);
     setFound({});
     setCompleted(false);
+    setCode("");
     setStatus("Progressi cancellati da questo telefono.");
     stopScanner();
   }
@@ -430,6 +523,12 @@ export default function App() {
         <main className="card scanner-card">
           {!completed && (
             <>
+              {nickname && (
+                <p className="player-tag">
+                  Stai giocando come <strong>{nickname}</strong>
+                </p>
+              )}
+
               <div className="scanner-frame">
                 <div id={scannerElementId} />
               </div>
@@ -444,12 +543,35 @@ export default function App() {
 
           {completed && (
             <section className="completed-box">
-              <div className="big-unicorn">🏆🦄</div>
-              <h3>Challenge completata!</h3>
-              <p>
-                Grande! Il nickname <strong>{nickname}</strong> è stato inserito
-                nella ruota dell’estrazione.
-              </p>
+              {prizeWon ? (
+                <>
+                  <div className="big-unicorn">🏆🎉</div>
+                  <h3>Hai vinto{prizeWon.prizeIndex ? ` il premio ${prizeWon.prizeIndex}` : ""}!</h3>
+                  <p>
+                    Complimenti <strong>{nickname}</strong>! Mostra questo codice
+                    allo staff per ritirare il premio.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="big-unicorn">🏆🦄</div>
+                  <h3>Challenge completata!</h3>
+                  <p>
+                    Grande! Il nickname <strong>{nickname}</strong> è stato
+                    inserito nella ruota dell’estrazione.
+                  </p>
+                </>
+              )}
+
+              {code && (
+                <div className={`prize-code ${prizeWon ? "is-winner" : ""}`}>
+                  <span className="prize-code-label">Il tuo codice premio</span>
+                  <span className="prize-code-value">{code}</span>
+                  <span className="prize-code-hint">
+                    Serve allo staff per verificare che il premio sia davvero tuo.
+                  </span>
+                </div>
+              )}
             </section>
           )}
 

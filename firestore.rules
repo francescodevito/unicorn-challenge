@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Regole di sicurezza Firestore per Unicorn Challenge.
+//
+// Come applicarle:
+//   1. Firebase Console -> Firestore Database -> scheda "Regole"
+//   2. Incolla questo contenuto e premi "Pubblica".
+//   (oppure, con Firebase CLI:  firebase deploy --only firestore:rules)
+//
+// Modello di identità:
+//   - I partecipanti usano l'accesso ANONIMO: il loro `uid` è l'identità vera
+//     e univoca. Il nickname è solo un'etichetta.
+//   - L'admin accede con EMAIL/PASSWORD (provider "password").
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admin = utente autenticato via email/password.
+    // CONSIGLIATO per l'evento: restringi a uno o più indirizzi specifici
+    // sostituendo la riga `return ...` con, ad esempio:
+    //   return isSignedIn()
+    //       && request.auth.token.email in ['admin@gianmarcodemaria.it'];
+    function isAdmin() {
+      return isSignedIn()
+          && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    // Prenotazione nickname: l'ID del documento è lo slug del nickname.
+    // `create` fallisce in automatico se il documento esiste già: questo
+    // garantisce l'unicità in modo atomico, senza race condition.
+    match /nicknames/{slug} {
+      allow read: if true;
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == request.auth.uid;
+      allow update: if isSignedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Progresso privato del partecipante: solo il proprietario.
+    match /participants/{uid} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Completamenti: il proprietario scrive il proprio; l'admin li legge tutti
+    // per popolare la ruota dell'estrazione.
+    match /completions/{uid} {
+      allow create, update: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Inserimenti manuali: solo admin.
+    match /manualEntries/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Storico estrazioni: solo admin.
+    match /draws/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Notifica vincita: l'admin la scrive, solo il vincitore legge la propria.
+    match /winners/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+
+    // Tutto il resto è negato.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
