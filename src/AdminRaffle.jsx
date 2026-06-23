@@ -486,6 +486,10 @@ export default function AdminRaffle() {
           )}
         </section>
       </main>
+
+      <p className="version-tag">
+        v{__APP_VERSION__} · {__BUILD_COMMIT__} · {__BUILD_DATE__}
+      </p>
     </div>
   );
 }

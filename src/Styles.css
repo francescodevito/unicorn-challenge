@@ -460,6 +460,15 @@
     gap: 8px;
   }
   
+  .version-tag {
+    margin: 18px auto 6px;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(93, 20, 64, 0.45);
+  }
+
   .manual-toggle {
     margin-top: 12px;
     width: 100%;
