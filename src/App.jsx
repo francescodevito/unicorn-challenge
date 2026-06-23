@@ -133,6 +133,10 @@ export default function App() {
   const [nickname, setNickname] = useState(restored?.nickname || "");
   const [started, setStarted] = useState(Boolean(restored?.started));
   const [found, setFound] = useState(restored?.found || {});
+  // Il callback dello scanner viene registrato una sola volta (vedi startScanner)
+  // e cattura `found` al primo render. Senza questo ref leggerebbe sempre lo stato
+  // iniziale, sovrascrivendo gli unicorni già trovati a ogni nuova scansione.
+  const foundRef = useRef(found);
   const [status, setStatus] = useState("Inserisci il nickname per iniziare.");
   const [cameraActive, setCameraActive] = useState(false);
   const [completed, setCompleted] = useState(Boolean(restored?.completed));
@@ -157,6 +161,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    foundRef.current = found;
     saveLocalState({
       nickname,
       started,
@@ -337,17 +342,24 @@ export default function App() {
   }
 
   async function markFound(unicornId) {
-    if (found[unicornId]) {
+    // Legge sempre lo stato più recente dal ref: il callback dello scanner è
+    // un vecchio closure e `found` qui sarebbe bloccato al primo render.
+    const current = foundRef.current;
+
+    if (current[unicornId]) {
       const item = UNICORNS.find((u) => u.id === unicornId);
       setStatus(`${item?.emoji || "🦄"} ${item?.label || "Unicorno"} già trovato!`);
       return;
     }
 
     const nextFound = {
-      ...found,
+      ...current,
       [unicornId]: true
     };
 
+    // Aggiorna subito il ref così due scansioni ravvicinate non si sovrascrivono
+    // prima che React applichi setFound.
+    foundRef.current = nextFound;
     setFound(nextFound);
 
     const item = UNICORNS.find((u) => u.id === unicornId);
