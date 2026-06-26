@@ -520,17 +520,74 @@
   
   .participant-pill {
     display: inline-flex;
-    flex-direction: column;
-    padding: 8px 12px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 8px 8px 12px;
     border-radius: 999px;
     background: #fff;
     border: 2px solid rgba(210, 40, 121, 0.2);
     font-weight: 900;
   }
-  
+
+  .participant-pill-text {
+    display: inline-flex;
+    flex-direction: column;
+  }
+
   .participant-pill small {
     color: var(--agm-pink);
     font-size: 0.65rem;
+  }
+
+  .pill-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(210, 40, 121, 0.12);
+    color: var(--agm-pink);
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 900;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .pill-remove:hover {
+    background: rgba(210, 40, 121, 0.22);
+  }
+
+  .pill-remove:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .danger-btn {
+    margin-top: 20px;
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 18px;
+    border: 3px solid rgba(176, 0, 32, 0.3);
+    border-radius: 999px;
+    background: #fff;
+    color: #b00020;
+    font-weight: 900;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+
+  .danger-btn:hover {
+    background: rgba(176, 0, 32, 0.08);
+  }
+
+  .danger-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
   
   .winners-box {

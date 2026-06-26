@@ -12,6 +12,8 @@ import {
   orderBy,
   doc,
   setDoc,
+  deleteDoc,
+  getDocs,
   serverTimestamp
 } from "./firebase";
 
@@ -69,6 +71,7 @@ export default function AdminRaffle() {
 
   const [completions, setCompletions] = useState([]);
   const [manuals, setManuals] = useState([]);
+  const [hidden, setHidden] = useState([]);
   const [manualNickname, setManualNickname] = useState("");
   const [showManual, setShowManual] = useState(false);
   const [prizeCount, setPrizeCount] = useState(3);
@@ -124,11 +127,25 @@ export default function AdminRaffle() {
       }
     );
 
+    const unsub3 = onSnapshot(
+      collection(db, "hidden"),
+      (snapshot) => {
+        setHidden(snapshot.docs.map((d) => d.id));
+      },
+      (error) => {
+        console.error(error);
+        setStatus("Errore lettura nomi nascosti.");
+      }
+    );
+
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   }, [authUser]);
+
+  const hiddenIds = useMemo(() => new Set(hidden), [hidden]);
 
   const participants = useMemo(() => {
     const map = new Map();
@@ -158,8 +175,8 @@ export default function AdminRaffle() {
       }
     });
 
-    return Array.from(map.values());
-  }, [completions, manuals]);
+    return Array.from(map.values()).filter((p) => !hiddenIds.has(p.id));
+  }, [completions, manuals, hiddenIds]);
 
   // Spicchi della ruota in SVG: uno per partecipante, con testo orientato
   // lungo il raggio e bordi evidenti.
@@ -262,6 +279,64 @@ export default function AdminRaffle() {
     } catch (error) {
       console.error(error);
       setStatus("Non riesco ad aggiungere il nickname manuale.");
+    }
+  }
+
+  // Nasconde un partecipante dalla ruota (es. nome offensivo o scurrile).
+  // Non cancella il dato originale: scrive un segnaposto nella collezione
+  // "hidden" così l'esclusione è condivisa e reversibile.
+  async function hideParticipant(p) {
+    const ok = window.confirm(`Rimuovere "${p.nickname}" dalla ruota?`);
+    if (!ok) return;
+
+    try {
+      await setDoc(doc(db, "hidden", p.id), {
+        participantId: p.id,
+        nickname: p.nickname,
+        hiddenAt: serverTimestamp()
+      });
+      setStatus(`"${p.nickname}" rimosso dalla ruota.`);
+    } catch (error) {
+      console.error(error);
+      setStatus("Non riesco a rimuovere il partecipante.");
+    }
+  }
+
+  // Reset totale del gioco: cancella partecipanti, inserimenti manuali,
+  // esclusioni e storico estrazioni. Operazione irreversibile.
+  async function resetGame() {
+    const ok = window.confirm(
+      "RESET GIOCO\n\nVerranno eliminati TUTTI i partecipanti, gli inserimenti manuali, i nomi nascosti e lo storico estrazioni.\n\nL'operazione è irreversibile. Continuare?"
+    );
+    if (!ok) return;
+
+    setStatus("Reset in corso...");
+
+    try {
+      const collections = [
+        "completions",
+        "manualEntries",
+        "hidden",
+        "winners",
+        "draws"
+      ];
+
+      for (const name of collections) {
+        const snap = await getDocs(collection(db, name));
+        await Promise.all(snap.docs.map((d) => deleteDoc(doc(db, name, d.id))));
+      }
+
+      setWinners([]);
+      setDrawTarget(0);
+      setAwaitingNext(false);
+      setSpinning(false);
+      rotationRef.current = 0;
+      if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
+
+      setStatus("Gioco resettato: tutti i dati sono stati cancellati.");
+    } catch (error) {
+      console.error(error);
+      setStatus("Errore durante il reset. Controlla le regole Firestore.");
     }
   }
 
@@ -571,8 +646,20 @@ export default function AdminRaffle() {
           <div className="participant-list">
             {participants.map((p) => (
               <div key={p.id} className="participant-pill">
-                <span>{p.nickname}</span>
-                <small>{p.source}</small>
+                <div className="participant-pill-text">
+                  <span>{p.nickname}</span>
+                  <small>{p.source}</small>
+                </div>
+                <button
+                  type="button"
+                  className="pill-remove"
+                  onClick={() => hideParticipant(p)}
+                  disabled={spinning || awaitingNext}
+                  title="Rimuovi dalla ruota"
+                  aria-label={`Rimuovi ${p.nickname}`}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
@@ -598,6 +685,15 @@ export default function AdminRaffle() {
               </p>
             </div>
           )}
+
+          <button
+            type="button"
+            className="danger-btn"
+            onClick={resetGame}
+            disabled={spinning || awaitingNext}
+          >
+            Reset gioco
+          </button>
         </section>
       </main>
 

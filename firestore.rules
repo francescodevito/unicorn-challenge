@@ -52,11 +52,17 @@ service cloud.firestore {
     match /completions/{uid} {
       allow create, update: if isSignedIn() && request.auth.uid == uid;
       allow read: if isAdmin();
-      allow delete: if false;
+      // L'admin può cancellare per il reset del gioco.
+      allow delete: if isAdmin();
     }
 
     // Inserimenti manuali: solo admin.
     match /manualEntries/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Nomi nascosti dalla ruota (es. offensivi): solo admin.
+    match /hidden/{id} {
       allow read, write: if isAdmin();
     }
 

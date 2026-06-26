@@ -10,12 +10,14 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   collection,
   onSnapshot,
   query,
   orderBy,
   getDoc,
+  getDocs,
   runTransaction
 } from "firebase/firestore";
 
@@ -52,11 +54,13 @@ export {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   collection,
   onSnapshot,
   query,
   orderBy,
   getDoc,
+  getDocs,
   runTransaction
 };
