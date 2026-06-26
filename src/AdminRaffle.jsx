@@ -42,8 +42,26 @@ function slugify(value) {
     .slice(0, 40);
 }
 
+const ORDINALS = [
+  "primo",
+  "secondo",
+  "terzo",
+  "quarto",
+  "quinto",
+  "sesto",
+  "settimo",
+  "ottavo",
+  "nono",
+  "decimo"
+];
+
+function ordinal(n) {
+  return ORDINALS[n - 1] || `${n}°`;
+}
+
 export default function AdminRaffle() {
   const wheelRef = useRef(null);
+  const rotationRef = useRef(0);
 
   const [authUser, setAuthUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -55,6 +73,8 @@ export default function AdminRaffle() {
   const [showManual, setShowManual] = useState(false);
   const [prizeCount, setPrizeCount] = useState(3);
   const [winners, setWinners] = useState([]);
+  const [drawTarget, setDrawTarget] = useState(0);
+  const [awaitingNext, setAwaitingNext] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [status, setStatus] = useState("Accedi come admin per vedere la ruota.");
 
@@ -245,31 +265,70 @@ export default function AdminRaffle() {
     }
   }
 
-  async function drawWinners() {
-    if (participants.length === 0) {
-      setStatus("Nessun partecipante disponibile.");
+  // Fa girare la ruota fermandola con la freccia (in alto, ore 12) sullo
+  // spicchio del vincitore indicato. La rotazione è cumulativa, così ogni
+  // estrazione successiva continua a girare in avanti invece di "saltare".
+  function alignAndSpin(winner) {
+    const wheel = wheelRef.current;
+    if (!wheel) return;
+
+    const slices = wheelSlices.length;
+    const idx = wheelSlices.findIndex((s) => s.id === winner.id);
+    const current = rotationRef.current;
+
+    let target;
+
+    if (slices > 0 && idx >= 0) {
+      const step = 360 / slices;
+      // Centro dello spicchio, in gradi orari dall'alto.
+      const mid = idx * step + step / 2;
+      // Rotazione (mod 360) che porta quel centro sotto la freccia in alto.
+      const targetResidue = (360 - (mid % 360)) % 360;
+      target = current - (current % 360) + targetResidue;
+      while (target < current + 360 * 5) target += 360;
+    } else {
+      // Vincitore non visibile sulla ruota (oltre il cap): giro generico.
+      target = current + 360 * 6 + Math.floor(Math.random() * 360);
+    }
+
+    rotationRef.current = target;
+    wheel.style.transform = `rotate(${target}deg)`;
+  }
+
+  // Estrae UN vincitore per giro, escludendo chi ha già vinto nei giri
+  // precedenti (`alreadyWon`), così le estrazioni successive non ripescano
+  // gli stessi nomi.
+  function runSpin(index, target, alreadyWon) {
+    const pool = participants.filter(
+      (p) => !alreadyWon.some((w) => w.id === p.id)
+    );
+
+    if (pool.length === 0) {
+      setSpinning(false);
+      setAwaitingNext(false);
+      setStatus(
+        `Estratti ${alreadyWon.length} vincitori: partecipanti esauriti.`
+      );
+      if (alreadyWon.length > 0) saveDraw(alreadyWon);
       return;
     }
 
-    const n = Math.max(1, Math.min(Number(prizeCount), participants.length));
-
     setSpinning(true);
-    setWinners([]);
-    setStatus("La ruota gira...");
+    setAwaitingNext(false);
+    setStatus(
+      target > 1
+        ? `La ruota gira per il ${ordinal(index + 1)} premio di ${target}...`
+        : "La ruota gira..."
+    );
 
-    const wheel = wheelRef.current;
+    const winner = shuffle(pool)[0];
+    alignAndSpin(winner);
 
-    if (wheel) {
-      const turns = 360 * 6 + Math.floor(Math.random() * 360);
-      wheel.style.transform = `rotate(${turns}deg)`;
-    }
+    window.setTimeout(() => {
+      const updated = [...alreadyWon, winner];
 
-    window.setTimeout(async () => {
-      const selected = shuffle(participants).slice(0, n);
-
-      setWinners(selected);
+      setWinners(updated);
       setSpinning(false);
-      setStatus(`Estratti ${selected.length} vincitori.`);
 
       confetti({
         particleCount: 200,
@@ -277,38 +336,72 @@ export default function AdminRaffle() {
         origin: { y: 0.55 }
       });
 
-      const drawId = `draw-${Date.now()}`;
+      const isLast = index + 1 >= target || updated.length >= participants.length;
 
-      try {
-        await setDoc(doc(db, "draws", drawId), {
-          winners: selected,
-          prizeCount: n,
-          totalParticipants: participants.length,
-          createdAt: serverTimestamp()
-        });
-
-        // Notifica in tempo reale ogni vincitore della challenge nella sua app.
-        // I nickname manuali non hanno uid, quindi vengono saltati.
-        await Promise.all(
-          selected
-            .filter((w) => w.uid)
-            .map((w) =>
-              setDoc(doc(db, "winners", w.uid), {
-                uid: w.uid,
-                nickname: w.nickname,
-                prizeIndex: selected.indexOf(w) + 1,
-                drawId,
-                wonAt: serverTimestamp()
-              })
-            )
-        );
-      } catch (error) {
-        console.error(error);
+      if (isLast) {
+        setStatus(`Estratti ${updated.length} vincitori.`);
+        saveDraw(updated);
+      } else {
+        setAwaitingNext(true);
         setStatus(
-          "Vincitori estratti, ma non sono riuscito a salvare lo storico estrazione."
+          `Premio ${index + 1} a ${winner.nickname}. Procedere con l'estrazione del ${ordinal(
+            index + 2
+          )}?`
         );
       }
     }, 3600);
+  }
+
+  function startDraw() {
+    if (participants.length === 0) {
+      setStatus("Nessun partecipante disponibile.");
+      return;
+    }
+
+    const n = Math.max(1, Math.min(Number(prizeCount), participants.length));
+
+    setDrawTarget(n);
+    setWinners([]);
+    setAwaitingNext(false);
+    runSpin(0, n, []);
+  }
+
+  function confirmNext() {
+    runSpin(winners.length, drawTarget, winners);
+  }
+
+  async function saveDraw(selected) {
+    const drawId = `draw-${Date.now()}`;
+
+    try {
+      await setDoc(doc(db, "draws", drawId), {
+        winners: selected,
+        prizeCount: selected.length,
+        totalParticipants: participants.length,
+        createdAt: serverTimestamp()
+      });
+
+      // Notifica in tempo reale ogni vincitore della challenge nella sua app.
+      // I nickname manuali non hanno uid, quindi vengono saltati.
+      await Promise.all(
+        selected
+          .filter((w) => w.uid)
+          .map((w) =>
+            setDoc(doc(db, "winners", w.uid), {
+              uid: w.uid,
+              nickname: w.nickname,
+              prizeIndex: selected.indexOf(w) + 1,
+              drawId,
+              wonAt: serverTimestamp()
+            })
+          )
+      );
+    } catch (error) {
+      console.error(error);
+      setStatus(
+        "Vincitori estratti, ma non sono riuscito a salvare lo storico estrazione."
+      );
+    }
   }
 
   if (!authUser?.email) {
@@ -421,16 +514,29 @@ export default function AdminRaffle() {
                 max={Math.max(1, participants.length)}
                 value={prizeCount}
                 onChange={(e) => setPrizeCount(e.target.value)}
+                disabled={spinning || awaitingNext}
               />
             </label>
 
-            <button
-              className="primary-btn"
-              onClick={drawWinners}
-              disabled={spinning || participants.length === 0}
-            >
-              {spinning ? "Estrazione..." : "Estrai vincitori"}
-            </button>
+            {awaitingNext ? (
+              <button
+                className="primary-btn"
+                onClick={confirmNext}
+                disabled={spinning}
+              >
+                {spinning
+                  ? "Estrazione..."
+                  : `Estrai il ${ordinal(winners.length + 1)}`}
+              </button>
+            ) : (
+              <button
+                className="primary-btn"
+                onClick={startDraw}
+                disabled={spinning || participants.length === 0}
+              >
+                {spinning ? "Estrazione..." : "Estrai vincitori"}
+              </button>
+            )}
           </div>
 
           <p className="status">{status}</p>

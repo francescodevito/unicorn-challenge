@@ -439,17 +439,6 @@ export default function App() {
     }
   }
 
-  function resetLocalProgress() {
-    localStorage.removeItem(STORAGE_KEY);
-    setNickname("");
-    setStarted(false);
-    setFound({});
-    setCompleted(false);
-    setCode("");
-    setStatus("Progressi cancellati da questo telefono.");
-    stopScanner();
-  }
-
   return (
     <div className="page game-bg">
       <header className="hero">
@@ -586,10 +575,6 @@ export default function App() {
               )}
             </section>
           )}
-
-          <button className="ghost-btn" onClick={resetLocalProgress}>
-            Ricomincia su questo telefono
-          </button>
         </main>
       )}
 
